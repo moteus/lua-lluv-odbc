@@ -4,7 +4,7 @@ local function worker_thread(pipe)
 
   local LogLib = require "log"
   local zmq    = require "lzmq"
-  local mp     = require "msgpack"
+  local mp     = require "cmsgpack.safe"
   local odbc   = require "odbc.dba"
   local common = require "lluv.odbc.common"
 

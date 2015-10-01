@@ -2,7 +2,7 @@ local zth    = require "lzmq.threads"
 local uv     = require "lluv"
 local ut     = require "lluv.utils"
 uv.poll_zmq  = require "lluv.poll_zmq"
-local mp     = require "msgpack"
+local mp     = require "cmsgpack.safe"
 local common = require "lluv.odbc.common"
 local worker = require "lluv.odbc.thread"
 
