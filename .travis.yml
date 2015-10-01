@@ -28,6 +28,7 @@ addons:
 before_install:
   - source .travis/setenv_lua.sh
   - bash .travis/setup_uv.sh
+  - mysql -e "create database IF NOT EXISTS test;" -uroot
   # - luarocks install luacov-coveralls
   # - luarocks install lunitx
 
