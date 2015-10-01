@@ -1,0 +1,48 @@
+language: c
+
+sudo: false
+
+env:
+  global:
+    - LUAROCKS=2.2.2
+  matrix:
+    - LUA=lua5.1
+    # - LUA=lua5.2
+    # - LUA=lua5.3
+    # - LUA=luajit     # latest stable version (2.0.4)
+    # - LUA=luajit2.0  # current head of 2.0 branch
+    # - LUA=luajit2.1  # current head of 2.1 branch
+
+branches:
+  only:
+    - master
+
+addons:
+  apt:
+    packages:
+      - libzmq-dev
+      - unixodbc
+      - unixodbc-dev
+      - libmyodbc
+
+before_install:
+  - source .travis/setenv_lua.sh
+  - bash .travis/setup_uv.sh
+  # - luarocks install luacov-coveralls
+  # - luarocks install lunitx
+
+install:
+  - luarocks install lluv UV_DIR=$TRAVIS_BUILD_DIR/libuv
+  - luarocks make rockspecs/lluv-odbc-scm-0.rockspec
+
+script:
+  - cd test
+  - lua test_odbc.lua
+
+after_success:
+  # - luacov-coveralls -j c.report.json -v
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always

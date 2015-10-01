@@ -18,7 +18,7 @@ description = {
 dependencies = {
   "lua >= 5.1, < 5.4",
   "lluv > 0.1.1",
-  "odbc >= 2.2",
+  "odbc >= 0.2.2",
   "lzmq >= 0.4.3",
   "lluv-poll-zmq",
   "lua-log",
@@ -27,7 +27,7 @@ dependencies = {
 }
 
 build = {
-  copy_directories = {'examples', 'test'},
+  copy_directories = {'test'},
 
   type = "builtin",
 
