@@ -149,7 +149,7 @@ local function worker_thread(pipe)
   end
 
   local function pass_api(...)
-    if select('#', ...) > 0 then
+    if ... then
       local args, err = mp.pack(...)
       if not args then
         LOG.alert("Can not serialize arguments: ", err)
@@ -163,7 +163,7 @@ local function worker_thread(pipe)
   end
 
   local function fail_api(ret, cat, ...)
-    if select('#', ...) > 0 then
+    if ... ~= nil then
       local args, err = mp.pack(...)
       if not args then
         LOG.alert("Can not serialize arguments: ", err)
@@ -185,14 +185,16 @@ local function worker_thread(pipe)
 
   local function do_api(msg, args)
     local api = API[msg]
-    assert(api, msg)
+    if not api then
+      assert(api, "Unsupported API call: " .. msg)
+    end
     if not args then check_api(api())
     else check_api(api(mp.unpack(args))) end
   end
-  
+
   local function poll_socket()
     -- can return nil/flase/true
-    local ok, err = pipe:poll(reading and 1 or 1000)
+    local ok, err = pipe:poll(1000)
 
     -- we get error
     if ok == nil then
