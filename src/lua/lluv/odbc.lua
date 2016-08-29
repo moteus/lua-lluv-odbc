@@ -29,6 +29,12 @@ local function pack_cmd(cmd, ...)
   return cb, cmd, unpack(args, 1, n)
 end
 
+local function wrap_cb(fn, cb, ...)
+  return function(...)
+    return cb(fn(...))
+  end, ...
+end
+
 ---------------------------------------------------------------
 local ODBCError = ut.class() do
 
@@ -67,20 +73,25 @@ end
 end
 ---------------------------------------------------------------
 
+local ODBCConnection, ODBCStatement
+
 ---------------------------------------------------------------
-local ODBCConnection = ut.class() do
+ODBCConnection = ut.class() do
 
 function ODBCConnection:__init()
   self._terminated = false
   self._queue      = ut.List.new()
-  self._actor      = zth.xactor(worker):start()
+  self._actor      = assert(zth.xactor(worker):start())
   self._poller     = uv.poll_zmq(self._actor)
   self._busy       = false
+
+  self._actor:set_linger(1000)
+  self._actor:set_sndtimeo(1000)
 
   return self:_start()
 end
 
-function ODBCConnection:close(cb)
+function ODBCConnection:destroy(cb)
   if self._actor  then
     if self._terminated then
       self._actor:close()
@@ -234,12 +245,89 @@ function ODBCConnection:connect(...)
   return self:_command(false, pack_cmd('CONNECT', ...))
 end
 
+function ODBCConnection:disconnect(...)
+  return self:_command(false, pack_cmd('DISCONNECT', ...))
+end
+
 function ODBCConnection:exec(...)
   return self:_command(false, pack_cmd('EXEC', ...))
 end
 
 function ODBCConnection:first_irow(...)
   return self:_command(false, pack_cmd('FIRST_IROW', ...))
+end
+
+function ODBCConnection:first_nrow(...)
+  return self:_command(false, pack_cmd('FIRST_NROW', ...))
+end
+
+function ODBCConnection:first_row(...)
+  return self:_command(false, wrap_cb(function(self, err, row)
+    if err then return self, err, row end
+    return self, nil, unpack(row, 1, row.n)
+  end, pack_cmd('FIRST_ROW', ...)))
+end
+
+function ODBCConnection:fetch_all(...)
+  return self:_command(false, pack_cmd('FETCH_ALL', ...))
+end
+
+function ODBCConnection:prepare(...)
+  return self:_command(false, wrap_cb(function(self, err, ref)
+    if err then return nil, err end
+    return ODBCStatement.new(self, ref)
+  end,pack_cmd('PREPARE', ...)))
+end
+
+end
+---------------------------------------------------------------
+
+---------------------------------------------------------------
+ODBCStatement = ut.class() do
+
+function ODBCStatement:__init(cnn, id)
+  self._cnn = cnn
+  self._ref = id
+  return self
+end
+
+function ODBCStatement:_command(front, cb, cmd, ...)
+  local stmt_cb
+  if cb then stmt_cb = function(_, ...) return cb(self, ...) end end
+  self._cnn:_command(front, stmt_cb, cmd, self._ref, ...)
+
+  return self
+end
+
+function ODBCStatement:exec(...)
+  return self:_command(false, pack_cmd('STMT EXEC', ...))
+end
+
+function ODBCStatement:close(...)
+  return self:_command(false, pack_cmd('STMT CLOSE', ...))
+end
+
+function ODBCStatement:exec(...)
+  return self:_command(false, pack_cmd('STMT EXEC', ...))
+end
+
+function ODBCStatement:first_irow(...)
+  return self:_command(false, pack_cmd('STMT FIRST_IROW', ...))
+end
+
+function ODBCStatement:first_nrow(...)
+  return self:_command(false, pack_cmd('STMT FIRST_NROW', ...))
+end
+
+function ODBCStatement:first_row(...)
+  return self:_command(false, wrap_cb(function(self, err, row)
+    if err then return self, err, row end
+    return self, nil, unpack(row, 1, row.n)
+  end, pack_cmd('STMT FIRST_ROW', ...)))
+end
+
+function ODBCStatement:fetch_all(...)
+  return self:_command(false, pack_cmd('STMT FETCH_ALL', ...))
 end
 
 end
